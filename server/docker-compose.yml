@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  pptpd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pptpd
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/ppp
+    network_mode: "host"
+    volumes:
+      - ./chap-secrets:/etc/ppp/chap-secrets
+    restart: always
