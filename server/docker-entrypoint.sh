@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# enable IP forwarding
+if [[ $(sysctl -n net.ipv4.ip_forward) -eq 0 ]]; then
+    echo "Enabling IPv4 Forwarding"
+    # If this fails, ensure the docker container is run with --privileged
+    sysctl -w net.ipv4.ip_forward=1 || echo "Failed to enable IPv4 Forwarding"
+fi
+
 # configure firewall
 echo "Configuring iptables"
 set -x
