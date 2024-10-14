@@ -44,6 +44,8 @@ ca [inline]
 cert [inline]
 key [inline]
 verb 3
+resolv-retry 10
+connect-retry 10
 <ca>
 $(cat ${EASYRSA_WORKDIR}/pki/ca.crt)
 </ca>

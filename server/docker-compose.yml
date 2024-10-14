@@ -1,7 +1,5 @@
 services:
   openvpn-server:
-    # tty: true
-    # entrypoint: /bin/sh
     build:
       context: .
       dockerfile: Dockerfile
