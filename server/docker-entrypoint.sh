@@ -1,39 +1,43 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-# enable IP forwarding
-if [[ $(sysctl -n net.ipv4.ip_forward) -eq 0 ]]; then
-    echo "Enabling IPv4 Forwarding"
-    # If this fails, ensure the docker container is run with --privileged
-    sysctl -w net.ipv4.ip_forward=1 || echo "Failed to enable IPv4 Forwarding"
+export EASYRSA_BATCH=1
+export EASYRSA_REQ_CN="OpenVPN CA Server"
+export OPENVPN_CONFIG_FILE=/etc/openvpn/server.conf
+
+mkdir -p ${EASYRSA_WORKDIR} ${CLIENTS_CONFIG_DIR} ${OVPN_CONFIG_DIR}
+cp -r /usr/share/easy-rsa/* ${EASYRSA_WORKDIR}
+cd ${EASYRSA_WORKDIR}
+
+if [ ! -f ${OPENVPN_CONFIG_FILE} ]; then
+  ./easyrsa init-pki
+  ./easyrsa build-ca nopass
+  ./easyrsa gen-req server nopass
+  ./easyrsa sign-req server server
+  ./easyrsa gen-dh
+else
+  echo "Generatin RSA is skipped"
 fi
 
-# configure firewall
-echo "Configuring iptables"
-set -x
-iptables -t nat -C POSTROUTING -s ${SUBNET} ! -d ${SUBNET} -j MASQUERADE || {
-    iptables -t nat -A POSTROUTING -s ${SUBNET} ! -d ${SUBNET} -j MASQUERADE
-}
-iptables -C FORWARD -s ${SUBNET} -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j TCPMSS --set-mss 1356 || {
-    iptables -A FORWARD -s ${SUBNET} -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j TCPMSS --set-mss 1356
-}
-iptables -C INPUT -p gre -j ACCEPT || {
-    iptables -A INPUT -p gre -j ACCEPT
-}
-iptables -C OUTPUT -p gre -j ACCEPT || {
-    iptables -A OUTPUT -p gre -j ACCEPT
-}
-{ set +x ;} 2> /dev/null
+echo "Generatin OpenVPN Server Configuration File"
+cat <<EOF > ${OPENVPN_CONFIG_FILE}
+port 1194
+proto tcp
+dev tap
+ca /etc/openvpn/easy-rsa/pki/ca.crt
+cert /etc/openvpn/easy-rsa/pki/issued/server.crt
+key /etc/openvpn/easy-rsa/pki/private/server.key
+dh /etc/openvpn/easy-rsa/pki/dh.pem
+server ${SUBNET_RANGE}
+client-to-client
+ifconfig-pool-persist ipp.txt
+client-config-dir ${CLIENTS_CONFIG_DIR}
+route-nopull
+keepalive 10 120
+persist-key
+persist-tun
+status openvpn-status.log
+verb 5
+EOF
 
-# configure pptp IP address ranges
-sed -i "s/^localip.*/localip ${LOCAL_IP}/" /etc/pptpd.conf
-sed -i "s/^remoteip.*/remoteip ${REMOTE_IP}/" /etc/pptpd.conf
-echo -e "\nLocal ip:  ${LOCAL_IP}\nRemote ip: ${REMOTE_IP}"
-
-
-echo -e "\n## PPTPD configuration ##"
-cat /etc/ppp/options.pptp
-echo -e "#########################\n"
-
-echo "Starting syslogd and pptpd"
-syslogd -n -t -O - & exec "pptpd" "--fg"
+openvpn --config /etc/openvpn/server.conf

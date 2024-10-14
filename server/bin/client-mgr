@@ -1,0 +1,62 @@
+#!/bin/sh
+set -e
+
+if [ "$#" -ne 3 ]; then
+    echo "Error: Invalid syntax. Correct usage: client-mgr add <client_name> <client_ip>"
+    exit 1
+fi
+
+if [ "$1" != "add" ]; then
+    echo "Error: Invalid command. Correct usage: client-mgr add <client_name> <client_ip>"
+    exit 1
+fi
+
+CLIENT_NAME=$2
+CLIENT_IP=$3
+
+echo ""
+echo "====================================="
+echo "Client name: ${CLIENT_NAME}"
+echo "Client IP: ${CLIENT_IP}"
+echo "====================================="
+echo ""
+
+echo "Creating Client Config File"
+echo "ifconfig-push ${CLIENT_IP} 255.255.255.0" > ${CLIENTS_CONFIG_DIR}/${CLIENT_NAME}
+
+export EASYRSA_REQ_CN=${CLIENT_NAME}
+cd ${EASYRSA_WORKDIR}
+./easyrsa gen-req ${CLIENT_NAME} nopass > /dev/null 2>&1
+echo yes | ./easyrsa sign-req client ${CLIENT_NAME} > /dev/null 2>&1
+
+echo "Generating OVPN Client Config"
+cat <<EOF > ${OVPN_CONFIG_DIR}/${CLIENT_NAME}.ovpn
+client
+dev tap
+proto tcp
+remote ${VPN_HOSTNAME} 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+ca [inline]
+cert [inline]
+key [inline]
+verb 3
+<ca>
+$(cat ${EASYRSA_WORKDIR}/pki/ca.crt)
+</ca>
+<cert>
+$(cat ${EASYRSA_WORKDIR}/pki/issued/${CLIENT_NAME}.crt)
+</cert>
+<key>
+$(cat ${EASYRSA_WORKDIR}/pki/private/${CLIENT_NAME}.key)
+</key>
+EOF
+
+echo ""
+echo "================================================================"
+cat ${OVPN_CONFIG_DIR}/${CLIENT_NAME}.ovpn
+echo "================================================================"
+echo ""
