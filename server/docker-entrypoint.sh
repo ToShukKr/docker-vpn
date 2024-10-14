@@ -1,7 +1,6 @@
 #!/bin/sh
 set -e
 
-export EASYRSA_BATCH=1
 export EASYRSA_REQ_CN="OpenVPN CA Server"
 export OPENVPN_CONFIG_FILE=/etc/openvpn/server.conf
 
@@ -10,11 +9,16 @@ cp -r /usr/share/easy-rsa/* ${EASYRSA_WORKDIR}
 cd ${EASYRSA_WORKDIR}
 
 if [ ! -f ${OPENVPN_CONFIG_FILE} ]; then
-  ./easyrsa init-pki
-  ./easyrsa build-ca nopass
-  ./easyrsa gen-req server nopass
-  ./easyrsa sign-req server server
-  ./easyrsa gen-dh
+  echo "Initializing PKI"
+  ./easyrsa init-pki  > /dev/null 2>&1
+  echo "Build CA Cetrificate"
+  ./easyrsa build-ca nopass  > /dev/null 2>&1
+  echo "Generation REQ"
+  ./easyrsa gen-req server nopass  > /dev/null 2>&1
+  echo "Sign REQ"
+  ./easyrsa sign-req server server  > /dev/null 2>&1
+  echo "Generating DH"
+  ./easyrsa gen-dh  > /dev/null 2>&1
 else
   echo "Generatin RSA is skipped"
 fi
