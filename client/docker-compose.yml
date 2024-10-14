@@ -1,16 +1,9 @@
-version: '3.8'
-
 services:
-  pptp-client:
+  openvpn-client:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: pptp-client
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/ppp
+    container_name: openvpn-client
+    privileged: true
     network_mode: "host"
     restart: always
-    env_file:
-      - .env
