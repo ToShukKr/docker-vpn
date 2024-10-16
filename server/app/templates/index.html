@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPN User Manager Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel='stylesheet' href='https://unpkg.com/vue-snotify@latest/styles/material.css'>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
+    body {
+      background-color: #1a2231;
+      color: #ffffff;
+      font-family: "Oswald", sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .menu {
+      background-color: #272e42;
+      padding: 15px;
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .menu .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .menu .actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .menu .actions i {
+      margin-right: 10px;
+      cursor: pointer;
+      color: #ffffff;
+      transition: transform 0.3s ease;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+
+    .menu .actions i:hover {
+      transform: scale(1.2);
+    }
+
+    .content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1200px;
+      overflow-x: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      background-color: #282c34;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 5px 0px;
+      text-align: center;
+      border-bottom: 1px solid #3e4149;
+    }
+
+    th {
+      background-color: #303a4f;
+    }
+
+    td {
+      background-color: #272e42;
+    }
+
+    tr:hover td {
+      background-color: #3f4963 !important;
+    }
+
+    .status {
+      font-weight: bold;
+      padding: 2px 0px;
+      border-radius: 5px;
+      color: white;
+      text-align: center;
+      min-width: 100px;
+      box-shadow: inset 0px 4px 6px rgba(0, 0, 0, 0.2);
+      font-size: 14px;
+      display: inline-block;
+    }
+
+    .status.active {
+      background-color: #66B92E;
+    }
+
+    .status.inactive {
+      background-color: #DC3545;
+    }
+
+    .btn-add {
+      background-color: #61dafb;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+      font-size: 16px;
+      border-radius: 4px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-add:hover {
+      background-color: #21a1f1;
+      transform: scale(1.05);
+      box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal {
+      display: flex;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: #272e42;
+      padding: 20px;
+      border-radius: 10px;
+      position: relative;
+      width: 300px;
+      text-align: center;
+    }
+
+    .modal-content input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .close {
+      position: absolute;
+      top: -10px;
+      right: 15px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 40px;
+    }
+
+    .close:hover {
+      transform: scale(1.2);
+    }
+
+    .modal-content .btn {
+      margin-top: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .check-btn {
+      background-color: #61dafb;
+      color: white;
+    }
+
+    .add-btn {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .copy-icon {
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .copy-icon:hover {
+      transform: scale(1.2);
+    }
+
+    .delete-icon {
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .delete-icon:hover {
+      transform: scale(1.2);
+    }
+    .loader {
+      margin-top:20px;
+      width: 50px;
+      aspect-ratio: 1;
+      --_c:no-repeat radial-gradient(farthest-side,#25b09b 92%,#0000);
+      background:
+        var(--_c) top,
+        var(--_c) left,
+        var(--_c) right,
+        var(--_c) bottom;
+      background-size: 12px 12px;
+      animation: l7 1s infinite;
+    }
+    @keyframes l7 {to{transform: rotate(.5turn)}}
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <vue-snotify></vue-snotify>
+  <div class="menu">
+    <div class="logo">VPN Manager</div>
+    <div class="actions">
+      <i class="fas fa-user-plus" @click="openModal"></i>
+      <a href="/logout"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+  </div>
+
+  <div v-if="users.length === 0" class="loader"></div>
+  <div class="content">
+    <table v-if="users.length > 0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>IP</th>
+          <th>Created</th>
+          <th>Status</th>
+          <th>Copy</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(user, index) in users" :key="index">
+          <td><span v-html="user.id"></span></td>
+          <td><span v-html="user.name"></span></td>
+          <td><span v-html="user.ip"></span></td>
+          <td><span v-html="user.date"></span></td>
+          <td><span v-html="getStatus(user.status)" :class="['status', user.status === 'active' ? 'active' : 'inactive']"></span></td>
+          <td><i class="fas fa-solid fa-copy copy-icon" @click="copyOVPN(user.name)"></i></td>
+          <td><i class="fas fa-trash-alt delete-icon" @click="deleteUser(user.name, index)"></i></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal" v-if="showModal" @click.self="closeModal">
+    <div class="modal-content">
+      <span class="close" @click="closeModal">&times;</span>
+      <h3>Add New User</h3>
+      <input type="text" placeholder="Name" v-model="newUser.name">
+      <input type="text" placeholder="IP" v-model="newUser.ip">
+      <button v-if="!is_available_to_add" class="btn check-btn" @click="checkUser">Check</button>
+      <button v-if="is_available_to_add" class="btn add-btn" @click="addUser">Add</button>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/vue-cookies@1.5.12/vue-cookies.js"></script>
+<script src='https://unpkg.com/vue-snotify@3.2.1/vue-snotify.min.js'></script>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      session_token: $cookies.get('session_token'),
+      backend_url: `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}`,
+      users: [],
+      showModal: false,
+      is_available_to_add: false,
+      newUser: {
+        name: '',
+        ip: ''
+      }
+    },
+    methods: {
+      notifyError(message) {
+        this.$snotify.error(message, { timeout: 5000, showProgressBar: true, closeOnClick: true, pauseOnHover: true });
+      },
+      notifySucess(message) {
+        this.$snotify.success(message, { timeout: 5000, showProgressBar: true, closeOnClick: true, pauseOnHover: true });
+      },
+      notifyInfo(message) {
+        this.$snotify.info(message, { timeout: 5000, showProgressBar: true, closeOnClick: true, pauseOnHover: true });
+      },
+      getStatus(status) {
+        return status === 'active' ? 'Active' : 'Inactive';
+      },
+      async deleteUser(name, index) {
+        const isConfirmed = confirm(`Are you sure that you want to remove OpenVPN client '${name}'?`);
+        if (!isConfirmed) {
+          return;
+        }
+        this.users.splice(index, 1);
+        const response = await axios.post(`${this.backend_url}/api/v1/delete-client`, { session_token: this.session_token, config_name: name }, { headers: { "Content-Type": "application/json" }});
+        this.notifySucess(`OpenVPN client '${name}' succesfully removed`)
+      },
+      openModal() {
+        this.showModal = true;
+      },
+      closeModal() {
+        this.showModal = false;
+      },
+      async checkUser() {
+        const response = await axios.post(`${this.backend_url}/api/v1/check-ip`, { session_token: this.session_token, name: this.newUser.name, ip_address: this.newUser.ip }, { headers: { "Content-Type": "application/json" }});
+        if (response.data.status) {
+          this.notifySucess(response.data.message)
+          this.is_available_to_add = true
+        } else {
+          this.notifyError(response.data.message)
+        }
+      },
+      async addUser() {
+        const response = await axios.post(`${this.backend_url}/api/v1/add-client`, { session_token: this.session_token, name: this.newUser.name, ip_address: this.newUser.ip }, { headers: { "Content-Type": "application/json" }});
+        if (response.data.status) {
+          this.notifySucess(response.data.message)
+          this.closeModal();
+          this.getClients();
+        } else {
+          this.notifyError(response.data.message)
+        }
+      },
+      async copyOVPN(name) {
+        const response = await axios.post(`${this.backend_url}/api/v1/get-client-config`, { session_token: this.session_token, config_name: name }, { headers: { "Content-Type": "application/json" }});
+        const textArea = document.createElement('textarea');
+        textArea.value = response.data.content;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        this.notifySucess(`OpenVPN config for '${name}' succesfully copied to clipboard`)
+      },
+      async getClients() {
+        this.users = []
+        const response = await axios.post(`${this.backend_url}/api/v1/get-clients`, { session_token: this.session_token }, { headers: { "Content-Type": "application/json" }});
+        this.users = response.data
+      }
+    },
+    beforeMount(){
+      this.getClients()
+    }
+  });
+</script>
+
+</body>
+</html>

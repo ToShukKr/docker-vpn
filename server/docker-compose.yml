@@ -10,6 +10,7 @@ services:
     cap_add:
       - NET_ADMIN
     volumes:
+      - ./app:/app
       - ./data/openvpn:/etc/openvpn
     env_file:
       - .env
